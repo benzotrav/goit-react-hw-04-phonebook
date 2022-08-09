@@ -1,49 +1,51 @@
-import React, { Component } from 'react';
 import { nanoid } from 'nanoid';
 import { Bookform } from './Bookform/Bookform';
 import { Searcher } from './Searcher/Searcher';
 import { Contacts } from './Contacts/Contacts';
 import { Box, Title } from './Bookform/Bookform-styled';
-
-export class App extends Component {
-  state = {
-    contacts: [
-      { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
-      { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
-      { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
-      { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
-    ],
-    filter: '',
-  };
+import { useState, useEffect } from 'react';
+import Notiflix from 'notiflix';
 
 
+const LS_KEY = 'savedContacts';
 
-  componentDidMount() {
-    const contactList = localStorage.getItem('contactList');
-    if (contactList) {
-      try {
-        const parseContactList = JSON.parse(contactList);
-        this.setState({ contacts: parseContactList });
-      } catch {
-        this.setState({ contacts: [] });
-      }
-    }
+const setToLocalStorage = contacts => {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(contacts));
+  } catch (error) {
+    console.log(error);
   }
+};
 
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.contacts !== prevState.contacts) {
-      localStorage.setItem('contactList', JSON.stringify(this.state.contacts));
+const getFromLocalStoreage = () => {
+  try {
+    const contacts = localStorage.getItem(LS_KEY);
+    if (contacts) {
+      return JSON.parse(contacts);
+    } else {
+      return [];
     }
+  } catch (error) {
+    console.log(error);
   }
+};
 
 
-  submitForm = (values, { resetForm }) => {
-    const isInclude = this.state.contacts.find(
+export const App = () => {
+  const [contacts, setContacts] = useState(() => getFromLocalStoreage());
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    setToLocalStorage(contacts);
+  }, [contacts]);
+
+  const submitForm = (values, { resetForm }) => {
+    const isInclude = contacts.find(
       person => person.name.toLowerCase() === values.name.toLowerCase()
     );
 
     if (isInclude) {
-      alert(` ${values.name} is already in contacts.`);
+      Notiflix.Notify.failure(` ${values.name} is already in contacts.`);
       return;
     }
 
@@ -53,45 +55,32 @@ export class App extends Component {
       number: values.number,
     };
 
-    this.setState(prevState => {
-      return {
-        contacts: [profile, ...prevState.contacts],
-      };
-    });
-
+    setContacts(state => [...state, profile]);
     resetForm();
   };
 
-  onFilter = e => {
-    this.setState({
-      filter: e.target.value,
-    });
+  const onFilter = e => {
+    setFilter(e.target.value);
   };
 
-  delateContact = id => {
-    this.setState(prevState => {
-      return {
-        contacts: prevState.contacts.filter(person => person.id !== id),
-      };
-    });
+  const delateContact = id => {
+    setContacts(state => state.filter(person => person.id !== id));
   };
 
-  render() {
-    const normalizedFilter = this.state.filter.toLowerCase();
-    const filtredContacts = this.state.contacts.filter(person =>
-      person.name.toLowerCase().includes(normalizedFilter)
-    );
+  const filtredContacts = contacts.filter(person =>
+    person.name.toLowerCase().includes(filter.toLowerCase())
+  );
+
 
     return (
       <Box>
         <Title>Phonebook</Title>
-        <Bookform submitForm={this.submitForm} />
-        <Searcher onFilter={this.onFilter} filter={this.state.filter} />
+        <Bookform submitForm={submitForm} />
+        <Searcher onFilter={onFilter} filter={filter} />
         <Contacts
-          contactsInfo={filtredContacts}
-          delateContact={this.delateContact}
+           contactsInfo={filtredContacts}
+           delateContact={delateContact}
         />
       </Box>
     );
   }
-}
